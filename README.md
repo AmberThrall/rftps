@@ -6,6 +6,7 @@ FTP Server written in Ruby.
 
 * [Ruby](https://www.ruby-lang.org/en/). Written with version 3.0.1.
 * [rake](https://github.com/ruby/rake)
+* [tomlrb](https://github.com/fbernier/tomlrb)
 * [minitest](https://github.com/seattlerb/minitest) - **optional**
 * [minitest-reporters](https://github.com/minitest-reporters/minitest-reporters) - **optional**
 * [rubocop](https://github.com/rubocop/rubocop) - **optional**
