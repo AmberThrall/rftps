@@ -4,6 +4,7 @@ require 'tomlrb'
 require_relative 'config/group'
 require_relative 'constants'
 require_relative 'utils'
+require_relative 'logging'
 
 # Loads and stores various configuration settings
 module Config
@@ -11,10 +12,16 @@ module Config
 
   def self.load_file(filename)
     load(File.read(filename))
+  rescue StandardError => e
+    Logging.warning "Failed to load configuration (#{e.message}). Revertting to defaults."
+    defaults
   end
 
   def self.load(contents)
     copy_from_hash(Tomlrb.parse(contents, symbolize_keys: true))
+  rescue StandardError => e
+    Logging.warning "Failed to parse configuration (#{e.message}). Revertting to defaults."
+    defaults
   end
 
   def self.copy_from_hash(hash)
@@ -40,6 +47,10 @@ module Config
     define_singleton_method name do
       @root_group.get(name)
     end
+  end
+
+  def self.defaults
+    @root_group.defaults
   end
 
   def self.setting(name, default, &block)
@@ -80,11 +91,9 @@ module Config
   end
 
   group :logging do
+    setting(:enabled, true) { |x| Utils.boolean? x }
     setting(:file, '/var/log/rsftp.log') { |x| x.is_a?(String) }
-    setting(:level, 0) { |x| x.is_a?(Integer) && x >= 0 }
-    group :packets do
-      setting(:log, false) { |x| Utils.boolean? x }
-      setting(:file, '/var/log/rftps.pcap') { |x| x.is_a?(String) }
-    end
+    setting(:max_level, 1) { |x| x.is_a?(Integer) && x >= 0 }
+    setting(:timestamp, '%m/%d/%Y %H:%M:%S') { |x| x.is_a?(String) }
   end
 end

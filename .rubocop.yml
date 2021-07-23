@@ -1,2 +1,5 @@
 AllCops:
     NewCops: enable
+
+Layout/HashAlignment:
+    Enabled: false

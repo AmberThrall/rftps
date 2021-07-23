@@ -6,7 +6,7 @@ Dir[File.join(__dir__, 'lib', '*.rb')].sort.each { |file| require file }
 puts 'uid     name                     group                    home'
 puts '======  ======================   ======================   ======================'
 Unix.users.each do |u|
-  print "#{u.id}".ljust(8)
+  print u.id.to_s.ljust(8)
   print u.to_s.ljust(25)
   print u.group.to_s.ljust(25)
   puts u.home
@@ -20,3 +20,9 @@ puts
 puts
 puts "Confdir: #{Unix.confdir}"
 puts "# Processors: #{Unix.nprocessors}"
+
+Config.logging.file = 'rftps.log'
+Config.logging.max_level = 4
+Logging.erase
+Logging.info('Information')
+Logging.warning "Multi-line\nmessages are\nsupported!"

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../logging'
+
 module Config
   # Handles a specific config setting
   class Setting
@@ -21,8 +23,12 @@ module Config
       if @block.call(value)
         @value = value
       else
-        puts "Warning: Invalid value for setting #{id}. Reverting to default value (#{@default_value})."
+        Logging.warning "Invalid value (#{value}) for setting #{id}. Reverting to default value (#{@default_value})."
       end
+    end
+
+    def defaults
+      @value = @default_value
     end
   end
 end

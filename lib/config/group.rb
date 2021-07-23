@@ -2,6 +2,7 @@
 
 require_relative 'setting'
 require_relative 'exception'
+require_relative '../logging'
 
 module Config
   # Handles an entire group of settings
@@ -53,7 +54,7 @@ module Config
         if subgroup?(name) || setting?(name)
           set(name, entry)
         else
-          puts "Warning: Ignoring unknown entry #{id}.#{name}."
+          Logging.warning "Ignoring unknown entry #{id}.#{name}."
         end
       end
     end
@@ -67,6 +68,10 @@ module Config
       end
 
       res
+    end
+
+    def defaults
+      @entries.each { |_name, entry| entry.defaults }
     end
 
     def group(name, &block)

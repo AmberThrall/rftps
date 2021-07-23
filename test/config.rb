@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'pp'
 require 'minitest/autorun'
 require_relative '../lib/config'
 require_relative '../lib/constants'
@@ -18,8 +17,13 @@ TEST_CONFIG = %(
   pasv.port_range.max = 5099
 
   [logging]
-  file = "log/rftps.log"
-  level = 5
+  file = "rftps.log"
+  max_level = 5
+)
+
+TEST_BAD_CONFIG = %(
+  [server]
+  port = five-thousand
 )
 
 class ConfigTest < Minitest::Test
@@ -35,9 +39,26 @@ class ConfigTest < Minitest::Test
     assert_equal Config.data_connections.pasv.port_range.min, 5001
     assert_equal Config.data_connections.pasv.port_range.max, 5099
     assert_equal Config.data_connections.port.enabled, true
-    assert_equal Config.logging.file, 'log/rftps.log'
-    assert_equal Config.logging.level, 5
-    assert_equal Config.logging.packets.log, false
-    assert_equal Config.logging.packets.file, '/var/log/rftps.pcap'
+    assert_equal Config.logging.file, 'rftps.log'
+    assert_equal Config.logging.max_level, 5
+  end
+
+  def test_defaults
+    Config.load(TEST_CONFIG)
+    assert_equal Config.server.port, 5000
+    Config.defaults
+    assert_equal Config.server.port, 21
+  end
+
+  def test_bad_config
+    Config.logging.enabled = false
+    Config.load(TEST_BAD_CONFIG)
+    assert_equal Config.server.port, 21
+  end
+
+  def test_no_such_file
+    Config.logging.enabled = false
+    Config.load_file('/')
+    assert_equal Config.server.port, 21
   end
 end
