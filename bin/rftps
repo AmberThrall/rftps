@@ -1,6 +1,0 @@
-#!/usr/bin/ruby
-# frozen_string_literal: true
-
-Dir['../lib/*.rb'].sort.each { |file| require file }
-
-puts 'Hello world!'

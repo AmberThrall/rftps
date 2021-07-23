@@ -16,7 +16,7 @@ begin
     require 'rubocop/rake_task'
 
     RuboCop::RakeTask.new(:lint) do |task|
-        task.patterns = [ 'lib/**/*.rb', 'bin/rftps' ]
+        task.patterns = [ 'lib/**/*.rb', 'rftps' ]
         task.fail_on_error = false
     end
 rescue LoadError

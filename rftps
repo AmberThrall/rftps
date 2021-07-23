@@ -1,0 +1,22 @@
+#!/usr/bin/ruby
+# frozen_string_literal: true
+
+Dir[File.join(__dir__, 'lib', '*.rb')].sort.each { |file| require file }
+
+puts 'uid     name                     group                    home'
+puts '======  ======================   ======================   ======================'
+Unix.users.each do |u|
+  print "#{u.id}".ljust(8)
+  print u.to_s.ljust(25)
+  print u.group.to_s.ljust(25)
+  puts u.home
+end
+
+puts
+print 'Groups: '
+Unix.groups.each { |g| print "#{g} (#{g.id}), " }
+puts
+
+puts
+puts "Confdir: #{Unix.confdir}"
+puts "# Processors: #{Unix.nprocessors}"

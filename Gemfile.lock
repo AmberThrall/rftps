@@ -29,7 +29,9 @@ GEM
     rubocop-ast (1.8.0)
       parser (>= 3.0.1.1)
     ruby-progressbar (1.11.0)
+    tomlrb (2.0.1)
     unicode-display_width (2.0.0)
+    unix-crypt (1.3.0)
 
 PLATFORMS
   x86_64-linux
@@ -39,6 +41,8 @@ DEPENDENCIES
   minitest-reporters
   rake
   rubocop
+  tomlrb
+  unix-crypt
 
 BUNDLED WITH
    2.2.24
