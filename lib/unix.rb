@@ -19,12 +19,34 @@ module Unix
     end
   end
 
+  def self.user?(arg)
+    case arg
+    when String then Etc.getpwnam(arg)
+    when Integer then Etc.getpwuid(arg)
+    else return false
+    end
+    true
+  rescue ArgumentError
+    false
+  end
+
   def self.group(arg)
     case arg
     when String then Group.new(Etc.getgrnam(arg))
     when Integer then Group.new(Etc.getgrgid(arg))
     else raise 'Expected either a name or gid.'
     end
+  end
+
+  def self.group?(arg)
+    case arg
+    when String then Etc.getgrnam(arg)
+    when Integer then Etc.getgrgid(arg)
+    else return false
+    end
+    true
+  rescue ArgumentError
+    false
   end
 
   def self.users

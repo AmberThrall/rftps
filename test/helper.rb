@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'config'
-require_relative 'logging'
+Dir[File.join(__dir__, 'test_*.rb')].sort.each { |file| require file }
 
 begin
   require 'minitest/reporters'
