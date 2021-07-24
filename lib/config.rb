@@ -82,6 +82,7 @@ module Config
   ## Actual configuration definition ##
   #####################################
   group :server do
+    setting(:host, '0.0.0.0') { |x| x.is_a?(String) }
     setting(:port, 21) { |x| x.is_a?(Integer) && x.positive? && x <= 65_535 }
     setting(:max_connections, 0) { |x| x.is_a?(Integer) }
     setting(:login_message, "Welcome to rftps (v#{VERSION}).") { |x| x.is_a?(String) }

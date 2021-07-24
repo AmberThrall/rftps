@@ -1,7 +1,7 @@
 #!/usr/bin/ruby
 # frozen_string_literal: true
 
-$PROGRAM_NAME = "rftps"
+$PROGRAM_NAME = 'rftps'
 
 require_relative 'lib/rftps'
 
@@ -60,7 +60,6 @@ raise "Unexpected command line argument(s): #{ARGV}" unless ARGV.empty?
 # Load in the desired configuration file defaulting to /etc/rftps.conf
 Config.load_file config_file
 overridden_settings.each { |setting, value| setting.value = value }
-Utils.pretty_print Config.to_hash
 
 # Ensure the logfile path is valid
 logfile = Pathname.new Config.logging.file
@@ -69,7 +68,7 @@ FileUtils.mkdir_p logfile.split[0]
 if logfile.directory?
   logfile += 'rftps.log'
   Config.logging.file = logfile.to_s
-  Logging.warning "Logfile is set to a directory; changing to #{logfile}."
+  Logging.warning "Logfile is set to a directory; changing to #{Config.logging.file}."
 end
 
 # Backup logfile if it exists
@@ -78,8 +77,14 @@ Logging.clear
 
 Unix.daemonize if daemon
 
-puts "Hello World"
-
-while true do
-  # skip
+# Start the main loop
+piserver = PI::Server.new
+piserver.listen(Config.server.port, Config.server.host)
+begin
+  piserver.main_loop
+rescue SignalException
+  piserver.close
+rescue StandardError => e
+  piserver.close
+  Logging.fatal "Exception: #{e.message}\n  " + e.backtrace.join("\n  ")
 end

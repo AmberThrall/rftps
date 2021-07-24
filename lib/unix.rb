@@ -82,9 +82,9 @@ module Unix
     Process.setsid
     exit if fork
 
-    STDIN.reopen '/dev/null'
-    STDOUT.reopen '/dev/null', 'a'
-    STDERR.reopen '/dev/null', 'a'
+    $stdin.reopen '/dev/null'
+    $stdout.reopen '/dev/null', 'a'
+    $stderr.reopen '/dev/null', 'a'
 
     Dir.chdir('/')
   end
