@@ -14,8 +14,17 @@ module PI
       @authenticated = false
     end
 
-    def message(code, message)
-      puts "#{code} #{message.chomp}\r\n"
+    ##########################
+    ## Verb Implementations ##
+    ##########################
+    verb('QUIT', max_args: 0) do
+      message ResponseCodes::CLOSING_CONNECTION, 'Goodbye.'
+      close
+    end
+
+    verb('USER', min_args: 1, max_args: 1) do |user|
+      Logging.debug "On USER: #{user}"
+      message ResponseCodes::SUCCESS, 'Okay.'
     end
   end
 end

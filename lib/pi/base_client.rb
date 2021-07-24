@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 require_relative '../rftps'
+require_relative 'verb'
+require_relative 'verbs_mixin'
 
 module PI
   # Handles the underlying connection with clients. Used by PI::Client
   class BaseClient
+    include VerbsMixin
     BUFFER_SIZE = 2056
     RECVFROM_SIZE = 20
 
@@ -22,6 +25,10 @@ module PI
       @socket.puts message
     rescue Errno::EPIPE, Errno::ECONNRESET
       close
+    end
+
+    def message(code, message)
+      puts "#{code} #{message.chomp}\r\n"
     end
 
     def close
@@ -56,6 +63,14 @@ module PI
 
     def handle_packet(packet)
       Logging.debug packet
+
+      parts = packet.partition(' ')
+      verb = parts[0].upcase
+      if self.class.verbs.key? verb
+        self.class.verbs[verb].handle(self, parts[2])
+      else
+        message ResponseCodes::COMMAND_NOT_IMPLEMENTED, "The command #{verb} is not implemented."
+      end
     end
 
     def recvfrom
