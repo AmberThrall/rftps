@@ -78,6 +78,14 @@ module Unix
   end
 
   def self.daemonize
-    raise 'Not implemented.'
+    exit if fork
+    Process.setsid
+    exit if fork
+
+    STDIN.reopen '/dev/null'
+    STDOUT.reopen '/dev/null', 'a'
+    STDERR.reopen '/dev/null', 'a'
+
+    Dir.chdir('/')
   end
 end

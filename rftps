@@ -1,6 +1,8 @@
 #!/usr/bin/ruby
 # frozen_string_literal: true
 
+$PROGRAM_NAME = "rftps"
+
 require_relative 'lib/rftps'
 
 def parse_option_override(str)
@@ -73,3 +75,11 @@ end
 # Backup logfile if it exists
 Logging.backup
 Logging.clear
+
+Unix.daemonize if daemon
+
+puts "Hello World"
+
+while true do
+  # skip
+end
