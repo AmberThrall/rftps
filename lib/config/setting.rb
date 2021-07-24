@@ -19,6 +19,10 @@ module Config
       "#{@group.id}.#{@name}"
     end
 
+    def type
+      @default_value.class
+    end
+
     def value=(value)
       if @block.call(value)
         @value = value

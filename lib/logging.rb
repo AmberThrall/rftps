@@ -9,8 +9,9 @@ module Logging
   class Writer
     CATEGORY_WIDTH = 9
 
-    def erase(file)
-      File.open(file == :logfile ? Config.logging.file : file, 'w').close
+    def clear(file)
+      filename = file == :logfile ? Config.logging.file : file
+      File.open(filename, 'w').close
     end
 
     def message(message, category, methods, timestamp)
@@ -51,16 +52,30 @@ module Logging
     debug:   { category: 'DEBUG',   methods: %i[stdout logfile] }
   }.freeze
 
-  def self.erase(target = :logfile)
-    return unless Config.logging.enabled
-
-    Writer.new.erase(target)
+  def self.clear(file = :logfile)
+    Writer.new.clear(file) if Config.logging.enabled
   end
 
   def self.message(level, message, category: 'MESSAGE', methods: %i[stdout logfile], timestamp: '%m/%d/%Y %H:%M:%S')
     return unless Config.logging.enabled
 
     Writer.new.message(message, category, methods, timestamp) unless level > Config.logging.max_level
+  end
+
+  def self.backup(old_path = :logfile)
+    return unless Config.logging.enabled
+
+    old_path = Config.logging.file if old_path == :logfile
+    return unless File.exist?(old_path)
+
+    n = 1
+    new_path = "#{old_path}.#{n}"
+    while File.exist?(new_path)
+      n += 1
+      new_path = "#{old_path}.#{n}"
+    end
+
+    FileUtils.cp old_path, new_path if n < Config.logging.num_backups
   end
 
   LEVELS.each_with_index do |(key, default_opts), index|

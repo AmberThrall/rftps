@@ -21,11 +21,11 @@ class LoggingTest < Minitest::Test
     delete_log_if_exists
   end
 
-  def test_erase
+  def test_clear
     delete_log_if_exists
     Config.logging.file = LOG_TEST_FILE
     Logging.fatal 'Message', methods: :logfile
-    Logging.erase
+    Logging.clear
     assert_file_contents_equal ''
     delete_log_if_exists
   end

@@ -20,14 +20,32 @@ module Config
     end
 
     def subgroup?(name)
-      @entries.key?(name) && @entries[name].is_a?(Group)
+      @entries.key?(name.to_sym) && @entries[name.to_sym].is_a?(Group)
     end
 
     def setting?(name)
-      @entries.key?(name) && @entries[name].is_a?(Setting)
+      @entries.key?(name.to_sym) && @entries[name.to_sym].is_a?(Setting)
+    end
+
+    def subgroups
+      @entries.select { |_name, entry| entry.is_a?(Group) }
+    end
+
+    def settings
+      @entries.select { |_name, entry| entry.is_a?(Setting) }
+    end
+
+    def lookup(id)
+      if id.include? '.'
+        part = id.partition('.')
+        get(part[0]).lookup(part[2])
+      else
+        setting?(id) ? @entries[id.to_sym] : nil
+      end
     end
 
     def get(name)
+      name = name.to_sym
       if subgroup?(name)
         @entries[name]
       elsif setting?(name)

@@ -32,12 +32,28 @@ module Config
     @root_group.to_hash
   end
 
-  def self.subgroup?(name)
+  def self.group?(name)
     @root_group.subgroup?(name)
   end
 
   def self.setting?(name)
     @root_group.setting?(name)
+  end
+
+  def self.groups
+    @root_group.subgroups
+  end
+
+  def self.settings
+    @root_group.settings
+  end
+
+  def self.defaults
+    @root_group.defaults
+  end
+
+  def self.lookup(id)
+    @root_group.lookup(id)
   end
 
   def self.group(name, &block)
@@ -47,10 +63,6 @@ module Config
     define_singleton_method name do
       @root_group.get(name)
     end
-  end
-
-  def self.defaults
-    @root_group.defaults
   end
 
   def self.setting(name, default, &block)
@@ -93,7 +105,8 @@ module Config
   group :logging do
     setting(:enabled, true) { |x| Utils.boolean? x }
     setting(:file, '/var/log/rsftp.log') { |x| x.is_a?(String) }
-    setting(:max_level, 1) { |x| x.is_a?(Integer) && x >= 0 }
+    setting(:num_backups, 9) { |x| x.is_a?(Integer) }
+    setting(:max_level, 1) { |x| x.is_a?(Integer) }
     setting(:timestamp, '%m/%d/%Y %H:%M:%S') { |x| x.is_a?(String) }
   end
 end

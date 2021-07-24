@@ -1,14 +1,28 @@
 task default: %w[run]
 
+def run_program(args = [])
+    args.concat ARGV.drop(1 + ARGV.find_index { |s| s == '--' }) if ARGV.include? '--'
+    ruby "rftps " + args.join(" ")
+end
+
 task :run do
-    ruby 'bin/rftps'
+    run_program
+end
+
+task :debug do
+    args = [
+        '--config etc/debug.conf',
+        '--non-daemon'
+    ]
+
+    run_program(args)
 end
 
 task :test do
     if gem 'minitest'
         ruby 'test/helper.rb'
     else
-        "Tests not run. Missing minitest dependency."
+        puts "Tests not run. Missing minitest dependency."
     end
 end
 
@@ -20,5 +34,7 @@ begin
         task.fail_on_error = false
     end
 rescue LoadError
-    task default: %w[test]
+    task :lint do
+        puts "Linter not run. Missing rubocop dependency."
+    end
 end

@@ -76,4 +76,8 @@ module Unix
   def self.nprocessors
     Etc.nprocessors
   end
+
+  def self.daemonize
+    raise 'Not implemented.'
+  end
 end

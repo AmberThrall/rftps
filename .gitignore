@@ -20,3 +20,4 @@
 
 # Logfiles
 *.log
+*.log.*

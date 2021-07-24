@@ -1,28 +1,75 @@
 #!/usr/bin/ruby
 # frozen_string_literal: true
 
-Dir[File.join(__dir__, 'lib', '*.rb')].sort.each { |file| require file }
+require_relative 'lib/rftps'
 
-puts 'uid     name                     group                    home'
-puts '======  ======================   ======================   ======================'
-Unix.users.each do |u|
-  print u.id.to_s.ljust(8)
-  print u.to_s.ljust(25)
-  print u.group.to_s.ljust(25)
-  puts u.home
+def parse_option_override(str)
+  part = str.partition('=')
+  setting = Config.lookup(part[0].strip)
+  unless setting.is_a?(Config::Setting)
+    raise OptionParser::InvalidArgument.new(part[0].strip), "Unknown setting #{part[0]}"
+  end
+
+  [setting, parse_option_value(setting, part[2])]
 end
 
-puts
-print 'Groups: '
-Unix.groups.each { |g| print "#{g} (#{g.id}), " }
-puts
+def parse_option_value(setting, value)
+  value = value.to_i if setting.type == Integer
+  value = true if Utils.boolean?(setting.default_value) && value == 'true'
+  value = false if Utils.boolean?(setting.default_value) && value == 'false'
+  value
+end
 
-puts
-puts "Confdir: #{Unix.confdir}"
-puts "# Processors: #{Unix.nprocessors}"
+config_file = "#{Unix.confdir}/rftps.conf"
+daemon = true
+overridden_settings = {}
 
-Config.logging.file = 'rftps.log'
-Config.logging.max_level = 4
-Logging.erase
-Logging.info('Information')
-Logging.warning "Multi-line\nmessages are\nsupported!"
+OptionParser.new do |opts|
+  opts.banner = 'Usage: rftps [options]'
+
+  opts.on('-c', '--config=CONFIG', 'Specify which config file to load') do |c|
+    config_file = c
+  end
+
+  opts.on('--non-daemon', 'Forces the program to run the foreground') do
+    daemon = false
+  end
+
+  opts.on('-h', '--help', 'Prints this help then exits') do
+    puts opts
+    exit
+  end
+
+  opts.on('--version', 'Prints the version information and exits') do
+    puts "rftps v#{VERSION}"
+    exit
+  end
+
+  opts.on('-o OPTION=VALUE', '--option OPTION=VALUE', 'Overrides a specific setting in the configuration') do |s|
+    raise OptionParser::InvalidArgument.new(s), 'Invalid options argument' unless s.include? '='
+
+    setting, value = parse_option_override(s)
+    overridden_settings[setting] = value
+  end
+end.parse!
+
+raise "Unexpected command line argument(s): #{ARGV}" unless ARGV.empty?
+
+# Load in the desired configuration file defaulting to /etc/rftps.conf
+Config.load_file config_file
+overridden_settings.each { |setting, value| setting.value = value }
+Utils.pretty_print Config.to_hash
+
+# Ensure the logfile path is valid
+logfile = Pathname.new Config.logging.file
+FileUtils.mkdir_p logfile.split[0]
+
+if logfile.directory?
+  logfile += 'rftps.log'
+  Config.logging.file = logfile.to_s
+  Logging.warning "Logfile is set to a directory; changing to #{logfile}."
+end
+
+# Backup logfile if it exists
+Logging.backup
+Logging.clear
