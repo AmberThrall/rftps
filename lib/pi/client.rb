@@ -34,7 +34,7 @@ module PI
       verb_CWD('..')
     end
 
-    verb('CWD', auth_only: true, max_args: 1) do |path|
+    verb('CWD', auth_only: true, max_args: 1, split_args: false) do |path|
       pn = Pathname.new Utils.local_path_to_real_path(path, @pwd, @user)
       if pn.exist?
         pn = pn.realpath
@@ -89,7 +89,7 @@ module PI
     end
 
     verb('XCUP', auth_only: true, max_args: 0) { verb_CDUP }
-    verb('XCWD', auth_only: true, max_args: 1) { |path| verb_CWD(path) }
+    verb('XCWD', auth_only: true, max_args: 1, split_args: false) { |path| verb_CWD(path) }
     verb('XPWD', auth_only: true, max_args: 0) { verb_PWD }
 
     private
