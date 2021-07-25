@@ -11,12 +11,13 @@ module PI
     BUFFER_SIZE = 2056
     RECVFROM_SIZE = 20
 
-    attr_reader :addrinfo
+    attr_reader :addrinfo, :verb_history
 
     def initialize(socket, addrinfo)
       @socket = socket
       @addrinfo = addrinfo
       @read_buffer = ''
+      @verb_history = []
     end
 
     def puts(message)
@@ -71,6 +72,7 @@ module PI
       else
         message ResponseCodes::COMMAND_NOT_IMPLEMENTED, "The command #{verb} is not implemented."
       end
+      @verb_history.push(verb)
     end
 
     def recvfrom

@@ -15,6 +15,7 @@ module Unix
     case arg
     when String then User.new(Etc.getpwnam(arg))
     when Integer then User.new(Etc.getpwuid(arg))
+    when User then arg
     else raise 'Expected either name or uid.'
     end
   end
@@ -23,6 +24,7 @@ module Unix
     case arg
     when String then Etc.getpwnam(arg)
     when Integer then Etc.getpwuid(arg)
+    when User then true
     else return false
     end
     true
@@ -34,6 +36,7 @@ module Unix
     case arg
     when String then Group.new(Etc.getgrnam(arg))
     when Integer then Group.new(Etc.getgrgid(arg))
+    when Group then arg
     else raise 'Expected either a name or gid.'
     end
   end
@@ -42,6 +45,7 @@ module Unix
     case arg
     when String then Etc.getgrnam(arg)
     when Integer then Etc.getgrgid(arg)
+    when Group then true
     else return false
     end
     true

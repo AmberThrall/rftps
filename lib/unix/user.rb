@@ -17,10 +17,12 @@ module Unix
     end
 
     def compare_password(password)
+      actual = @passwd == 'x' ? fetch_shadow_password : @passwd
+
       case @passwd
-      when 'x' then UnixCrypt.valid?(password, fetch_shadow_password)
-      when '*' then false
-      else UnixCrypt.valid?(password, @passwd)
+      when '' then password.empty?
+      when '!', '*', '*LK*', '*NP*', '!!' then false
+      else UnixCrypt.valid?(password, actual)
       end
     end
 
@@ -29,7 +31,7 @@ module Unix
     end
 
     def can_login?
-      @passwd != '*'
+      !['!', '*', '*LK*', '*NP*', '!!'].includes? @passwd
     end
 
     def ==(other)
@@ -43,7 +45,7 @@ module Unix
     private
 
     def fetch_shadow_password
-      text = File.open('/etc/shadow').read
+      text = File.open("#{Unix.confdir}/shadow").read
       text.each_line do |line|
         name, encrypted_password = line.split(':')
         return encrypted_password if name == @name
