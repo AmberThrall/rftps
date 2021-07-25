@@ -18,6 +18,7 @@ module PI
       @addrinfo = addrinfo
       @read_buffer = ''
       @verb_history = []
+      @authenticated = false
     end
 
     def puts(message)
@@ -28,8 +29,8 @@ module PI
       close
     end
 
-    def message(code, message)
-      puts "#{code} #{message.chomp}\r\n"
+    def message(code, message, mark: ' ')
+      puts "#{code}#{mark}#{message.chomp}\r\n"
     end
 
     def close
@@ -68,7 +69,11 @@ module PI
       parts = packet.partition(' ')
       verb = parts[0].upcase
       if self.class.verbs.key? verb
-        self.class.verbs[verb].handle(self, parts[2])
+        if self.class.verbs[verb].auth_only && !@authenticated
+          message ResponseCodes::NOT_LOGGED_IN, 'Not logged in.'
+        else
+          self.class.verbs[verb].handle(self, parts[2])
+        end
       else
         message ResponseCodes::COMMAND_NOT_IMPLEMENTED, "The command #{verb} is not implemented."
       end
