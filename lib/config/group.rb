@@ -2,7 +2,7 @@
 
 require_relative 'setting'
 require_relative 'exception'
-require_relative '../logging'
+require_relative '../rftps'
 
 module Config
   # Handles an entire group of settings

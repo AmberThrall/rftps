@@ -15,6 +15,7 @@ module PI
       @user = nil
       @password = ''
       @authenticated = false
+      @data_connection = nil
     end
 
     ##########################
@@ -53,6 +54,14 @@ module PI
       message ResponseCodes::SYSTEM_STATUS, 'END'
     end
 
+    verb('LIST', auth_only: true) do |args|
+      if @data_connection.nil?
+        return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
+      end
+
+      @data_connection.send "Hello World\r\n"
+    end
+
     verb('PASS', max_args: 1) do |pass|
       @password = pass
 
@@ -63,14 +72,22 @@ module PI
       end
     end
 
-    verb('QUIT', max_args: 0) do
-      message ResponseCodes::CLOSING_CONNECTION, 'Goodbye.'
-      close
+    verb('PORT', auth_only: true, min_args: 6, max_args: 6, arg_sep: ',') do |*h, p1, p2|
+      ip = h.join('.')
+      port = p1.to_i * 256 + p2.to_i
+      @data_connection&.close
+      @data_connection = DTP::Active.new(self, ip, port)
+      message ResponseCodes::SUCCESS, 'Okay.'
     end
 
     verb('PWD', auth_only: true, max_args: 0) do
       local_path = Utils.real_path_to_local_path(@pwd, @user)
       message ResponseCodes::PATHNAME_CREATED, "\"#{local_path}\""
+    end
+
+    verb('QUIT', max_args: 0) do
+      message ResponseCodes::CLOSING_CONNECTION, 'Goodbye.'
+      close
     end
 
     verb('SYST', max_args: 0) do

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative '../logging'
+require_relative '../rftps'
 
 module Config
   # Handles a specific config setting

@@ -43,7 +43,7 @@ OptionParser.new do |opts|
   end
 
   opts.on('--version', 'Prints the version information and exits') do
-    puts "rftps v#{VERSION}"
+    puts "rftps v#{RFTPS.version}"
     exit
   end
 
@@ -78,13 +78,5 @@ Logging.clear
 Unix.daemonize if daemon
 
 # Start the main loop
-piserver = PI::Server.new
-piserver.listen(Config.server.port, Config.server.host)
-begin
-  piserver.main_loop
-rescue SignalException
-  piserver.close
-rescue StandardError => e
-  piserver.close
-  Logging.fatal "Exception: #{e.message}\n  " + e.backtrace.join("\n  ")
-end
+RFTPS.instance.start
+RFTPS.instance.main_loop

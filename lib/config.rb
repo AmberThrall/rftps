@@ -2,9 +2,7 @@
 
 require 'tomlrb'
 require_relative 'config/group'
-require_relative 'constants'
-require_relative 'utils'
-require_relative 'logging'
+require_relative 'rftps'
 
 # Loads and stores various configuration settings
 module Config
@@ -85,21 +83,23 @@ module Config
     setting(:host, '0.0.0.0') { |x| x.is_a?(String) }
     setting(:port, 21) { |x| x.is_a?(Integer) && x.positive? && x <= 65_535 }
     setting(:max_connections, 0) { |x| x.is_a?(Integer) }
-    setting(:login_message, "Welcome to rftps (v#{VERSION}).") { |x| x.is_a?(String) }
+    setting(:login_message, "Welcome to rftps (v#{RFTPS.version}).") { |x| x.is_a?(String) }
+    setting(:max_threads, 0) { |x| x.is_a?(Integer) }
   end
 
   group :data_connections do
     setting(:chunk_size, 8_192) { |x| x.is_a?(Integer) && x.positive? }
-    setting(:connection_timeout, 300) { |x| x.is_a?(Integer) && x.positive? }
-    group :pasv do
+    setting(:connection_timeout, 300) { |x| x.is_a?(Numeric) }
+    group :passive do
       setting(:enabled, true) { |x| Utils.boolean? x }
       group :port_range do
         setting(:min, 15_000) { |x| x.is_a?(Integer) && x.positive? && x <= 65_535 }
         setting(:max, 15_100) { |x| x.is_a?(Integer) && x.positive? && x <= 65_535 }
       end
     end
-    group :port do
+    group :active do
       setting(:enabled, true) { |x| Utils.boolean? x }
+      setting(:connect_timeout, 10) { |x| x.is_a?(Numeric) }
     end
   end
 

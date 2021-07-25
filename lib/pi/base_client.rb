@@ -19,35 +19,33 @@ module PI
       @read_buffer = ''
       @verb_history = []
       @authenticated = false
+      RFTPS.instance.register_socket(@socket, self, :update)
     end
 
-    def puts(message)
+    def message(code, message, mark: ' ')
       return unless connected?
 
-      @socket.puts message
+      @socket.puts "#{code}#{mark}#{message.chomp}\r\n"
     rescue Errno::EPIPE, Errno::ECONNRESET
       close
     end
 
-    def message(code, message, mark: ' ')
-      puts "#{code}#{mark}#{message.chomp}\r\n"
-    end
-
     def close
+      RFTPS.instance.unregister_socket(@socket)
       Logging.info "Client #{@addrinfo.ip_address} disconnected"
-      @socket.close
+      @socket&.close
       @socket = nil
     end
 
     def connected?
-      !@socket.nil?
+      !@socket.nil? && !@socket.closed?
     end
 
     def update
+      return close unless connected?
+
       data = recvfrom
       return if data.nil?
-
-      close if data.empty?
 
       # Add the data to the buffer and see if we have a full message yet.
       @read_buffer += data.to_s
