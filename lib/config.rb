@@ -85,6 +85,7 @@ module Config
     setting(:max_connections, 0) { |x| x.is_a?(Integer) }
     setting(:login_message, "Welcome to rftps (v#{RFTPS.version}).") { |x| x.is_a?(String) }
     setting(:max_threads, 0) { |x| x.is_a?(Integer) }
+    setting(:hide_dot_files, true) { |x| Utils.boolean? x }
   end
 
   group :data_connections do

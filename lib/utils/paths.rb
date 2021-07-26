@@ -4,18 +4,17 @@ require 'pathname'
 
 # Various utility methods
 module Utils
-  def self.real_path_to_local_path(path, user)
+  def self.global_path_to_local(path, pwd)
     path = Pathname.new(path)
     path = path.realpath if File.exist?(path.to_s)
-    path = path.relative_path_from(user.home).to_s
-    path == '.' ? '/' : "/#{path}".squeeze('/')
+    path.relative_path_from(pwd).to_s
   end
 
-  def self.local_path_to_real_path(path, pwd, user)
-    res = "#{pwd}/#{path}"
-    res = user.home if path.to_s.empty?
-    res = "#{user.home}/#{path}" if path.to_s[0] == '/'
-    File.expand_path(res.squeeze('/'))
+  def self.local_path_to_global(path, pwd)
+    return pwd if path.to_s.empty?
+    return File.expand_path(path.squeeze('/')) if path[0] == '/'
+
+    File.expand_path("#{pwd}/#{path}".squeeze('/'))
   end
 
   def self.descendent?(path, base)

@@ -16,6 +16,7 @@ module PI
       @password = ''
       @authenticated = false
       @data_connection = nil
+      @binary_flag = true
     end
 
     ##########################
@@ -36,7 +37,7 @@ module PI
     end
 
     verb('CWD', auth_only: true, max_args: 1, split_args: false) do |path|
-      pn = Pathname.new Utils.local_path_to_real_path(path, @pwd, @user)
+      pn = Pathname.new Utils.local_path_to_global(path, @pwd)
       if pn.exist?
         pn = pn.realpath
         pn = pn.split[0] unless pn.directory?
@@ -54,12 +55,25 @@ module PI
       message ResponseCodes::SYSTEM_STATUS, 'END'
     end
 
-    verb('LIST', auth_only: true) do |args|
+    verb('LIST', auth_only: true, max_args: 1, split_args: false) do |arg|
       if @data_connection.nil?
         return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
       end
 
-      @data_connection.send "Hello World\r\n"
+      path = Utils.local_path_to_global(arg, @pwd)
+      @data_connection.send_ascii Utils.ls(path, hide_dot_files: Config.server.hide_dot_files)
+    end
+
+    verb('NLST', auth_only: true, max_args: 1, split_args: false) do |arg|
+      if @data_connection.nil?
+        return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
+      end
+
+      path = Utils.local_path_to_global(arg.to_s, @pwd)
+      nlst = "#{arg}: No such file or directory."
+      nlst = File.split(path)[1] if File.file?(path)
+      nlst = Dir.children(path).join("\r\n") if File.directory?(path)
+      @data_connection.send_ascii "#{nlst}\r\n"
     end
 
     verb('PASS', max_args: 1) do |pass|
@@ -81,7 +95,7 @@ module PI
     end
 
     verb('PWD', auth_only: true, max_args: 0) do
-      local_path = Utils.real_path_to_local_path(@pwd, @user)
+      local_path = @pwd
       message ResponseCodes::PATHNAME_CREATED, "\"#{local_path}\""
     end
 
@@ -92,6 +106,15 @@ module PI
 
     verb('SYST', max_args: 0) do
       message ResponseCodes::SYSTEM_TYPE, 'UNIX Type: L8'
+    end
+
+    verb('TYPE', max_args: 1, split_args: false) do |flag|
+      if ['A', 'A N', 'I', 'L 8'].include?(flag.upcase)
+        @binary_flag = ['I', 'L 8'].include?(flag.upcase)
+        message ResponseCodes::SYSTEM_TYPE, 'Okay.'
+      else
+        message ResponseCodes::COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER, "Unsupported parameter #{flag}."
+      end
     end
 
     verb('USER', min_args: 1, max_args: 1) do |user|

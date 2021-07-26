@@ -4,6 +4,7 @@ require 'etc'
 
 require_relative 'unix/user'
 require_relative 'unix/group'
+require_relative 'unix/permissions'
 
 # Enables interacting with the unix system.
 module Unix
@@ -91,5 +92,10 @@ module Unix
     $stderr.reopen '/dev/null', 'a'
 
     Dir.chdir('/')
+  end
+
+  def self.owner(path)
+    stat = File.stat(path)
+    [user(stat.uid), group(stat.gid)]
   end
 end

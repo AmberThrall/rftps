@@ -2,19 +2,19 @@
 
 require 'minitest/autorun'
 require_relative '../lib/config'
-require_relative '../lib/constants'
 
 TEST_CONFIG = %(
   [server]
   port = 5000
   max_connections = 30
+  login_message = "Hello World!"
 
   [data_connections]
   chunk_size = 1024
   connection_timeout = 600
-  pasv.enabled = false
-  pasv.port_range.min = 5001
-  pasv.port_range.max = 5099
+  passive.enabled = false
+  passive.port_range.min = 5001
+  passive.port_range.max = 5099
 
   [logging]
   file = "rftps.log"
@@ -32,13 +32,13 @@ class ConfigTest < Minitest::Test
 
     assert_equal Config.server.port, 5000
     assert_equal Config.server.max_connections, 30
-    assert_equal Config.server.login_message, "Welcome to rftps (v#{VERSION})."
+    assert_equal Config.server.login_message, "Hello World!"
     assert_equal Config.data_connections.chunk_size, 1024
     assert_equal Config.data_connections.connection_timeout, 600
-    assert_equal Config.data_connections.pasv.enabled, false
-    assert_equal Config.data_connections.pasv.port_range.min, 5001
-    assert_equal Config.data_connections.pasv.port_range.max, 5099
-    assert_equal Config.data_connections.port.enabled, true
+    assert_equal Config.data_connections.passive.enabled, false
+    assert_equal Config.data_connections.passive.port_range.min, 5001
+    assert_equal Config.data_connections.passive.port_range.max, 5099
+    assert_equal Config.data_connections.active.enabled, true
     assert_equal Config.logging.file, 'rftps.log'
     assert_equal Config.logging.max_level, 5
   end

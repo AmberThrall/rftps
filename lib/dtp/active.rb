@@ -22,12 +22,12 @@ module DTP
     def send_impl(packet)
       connect unless connected?
       unless connected?
-        @client.message ResponseCodes::CANT_OPEN_CONNECTION, "Couldn't connect to #{@ip}:#{@port}."
+        @client.message PI::ResponseCodes::CANT_OPEN_CONNECTION, "Couldn't connect to #{@ip}:#{@port}."
         return -1
       end
 
       sent = @socket.send packet, 0
-      @client.message ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.' if sent.zero?
+      @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.' if sent.zero?
       sent
     end
 
