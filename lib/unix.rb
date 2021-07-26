@@ -5,11 +5,25 @@ require 'etc'
 require_relative 'unix/user'
 require_relative 'unix/group'
 require_relative 'unix/permissions'
+require_relative 'rftps'
 
 # Enables interacting with the unix system.
 module Unix
   def self.whoami?
-    User.new(Etc.getpwuid)
+    Unix.effective_user_group[0]
+  end
+
+  def self.real_user_group
+    [Unix.user(Process::Sys.getuid), Unix.group(Process::Sys.getgid)]
+  end
+
+  def self.effective_user_group
+    [Unix.user(Process::Sys.geteuid), Unix.group(Process::Sys.getegid)]
+  end
+
+  def self.set_effective_user_group(user = nil, group = nil)
+    Process::Sys.setegid(Unix.group(group).id) unless group.nil?
+    Process::Sys.seteuid(Unix.user(user).id) unless user.nil?
   end
 
   def self.user(arg)

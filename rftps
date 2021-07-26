@@ -57,6 +57,11 @@ end.parse!
 
 raise "Unexpected command line argument(s): #{ARGV}" unless ARGV.empty?
 
+unless Unix.whoami?.root?
+  warn 'Please run as root.'
+  exit
+end
+
 # Load in the desired configuration file defaulting to /etc/rftps.conf
 Config.load_file config_file
 overridden_settings.each { |setting, value| setting.value = value }

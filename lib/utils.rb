@@ -22,7 +22,7 @@ module Utils
     nhash = (ratio * width).to_i
     s = format.gsub('$progress', progress.to_s.rjust(total.to_s.length))
     s = s.gsub('$total', total.to_s)
-    s = s.gsub('$bar', +'[' << +'#' << nhash << ' ' * (width - nhash) << ']')
+    s = s.gsub('$bar', +'[' << ('#' * nhash).ljust(width) << ']')
     s.gsub('$percent', (ratio * 100).to_i.to_s.rjust(3))
   end
 end

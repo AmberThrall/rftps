@@ -78,6 +78,6 @@ module Utils
   end
 
   def self.ls(path = '.', hide_dot_files: true)
-    Ls.new(path, hide_dot_files: hide_dot_files).to_s
+    RFTPS.instance.do_as(0) { Ls.new(path, hide_dot_files: hide_dot_files).to_s }
   end
 end

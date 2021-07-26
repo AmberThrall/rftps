@@ -8,6 +8,8 @@ module Utils
     path = Pathname.new(path)
     path = path.realpath if File.exist?(path.to_s)
     path.relative_path_from(pwd).to_s
+  rescue Errno::EACCES
+    RFTPS.instance.do_as(0) { Utils.global_path_to_local(path, pwd) }
   end
 
   def self.local_path_to_global(path, pwd)
@@ -15,6 +17,8 @@ module Utils
     return File.expand_path(path.squeeze('/')) if path[0] == '/'
 
     File.expand_path("#{pwd}/#{path}".squeeze('/'))
+  rescue Errno::EACCES
+    RFTPS.instance.do_as(0) { Utils.local_path_to_global(path, pwd) }
   end
 
   def self.descendent?(path, base)

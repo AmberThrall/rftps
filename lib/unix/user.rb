@@ -35,7 +35,12 @@ module Unix
     end
 
     def ==(other)
-      other.is_a?(Unix::User) && other.id == @id
+      case other.class
+      when Unix::User then other.id == @id
+      when Integer then other == @id
+      when String then other == @name
+      else false
+      end
     end
 
     def to_s
@@ -45,7 +50,7 @@ module Unix
     private
 
     def fetch_shadow_password
-      text = File.open("#{Unix.confdir}/shadow").read
+      text = RFTPS.instance.do_as(0) { File.open("#{Unix.confdir}/shadow").read }
       text.each_line do |line|
         name, encrypted_password = line.split(':')
         return encrypted_password if name == @name

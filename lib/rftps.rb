@@ -10,16 +10,42 @@ require 'socket'
 class RFTPS
   include Singleton
 
+  attr_reader :mutex, :locked_thread
+
   SELECT_TIMEOUT = 1
 
   def self.version
-    '0.2'
+    '0.3'
   end
 
   def initialize
     @sockets = {}
     @threads = []
     @piserver = PI::Server.new
+    @mutex = Mutex.new
+    @locked_thread = nil
+  end
+
+  def do_as(user, group = nil, &block)
+    user = Unix.user(user)
+    group = group.nil? ? user.group : Unix.group(group)
+    current_effective_user_group = Unix.effective_user_group
+
+    if @locked_thread == Thread.current # Avoid locking twice in the same thread
+      Unix.set_effective_user_group(user, group)
+      output = block.call
+      Unix.set_effective_user_group(*current_effective_user_group)
+    else
+      @mutex.lock
+      @locked_thread = Thread.current
+      Unix.set_effective_user_group(user, group)
+      output = block.call
+      Unix.set_effective_user_group(*current_effective_user_group)
+      @locked_thread = nil
+      @mutex.unlock
+    end
+
+    output
   end
 
   def register_socket(socket, owner, method)

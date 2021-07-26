@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require 'time'
-require_relative 'config'
+require_relative 'rftps'
 
 # Module handling various logging functions
 module Logging
@@ -39,8 +39,8 @@ module Logging
       f = File.open(file, 'a')
       f.puts(string)
       f.close
-    rescue SystemCallError
-      # skip
+    rescue Errno::EACCES
+      RFTPS.instance.do_as(0) { append_to_file(file, string) }
     end
   end
 
@@ -75,7 +75,7 @@ module Logging
       new_path = "#{old_path}.#{n}"
     end
 
-    FileUtils.cp old_path, new_path if n < Config.logging.num_backups
+    RFTPS.instance.do_as(0) { FileUtils.cp old_path, new_path } if n < Config.logging.num_backups
   end
 
   LEVELS.each_with_index do |(key, default_opts), index|

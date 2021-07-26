@@ -11,7 +11,12 @@ module Unix
     end
 
     def ==(other)
-      other.is_a?(Unix::Group) && other.id == @id
+      case other.class
+      when Unix::Group then other.id == @id
+      when Integer then other == @id
+      when String then other == @name
+      else false
+      end
     end
 
     def to_s
