@@ -9,12 +9,18 @@ module Utils
     base = File.expand_path(root).split('/')
     return nil if root == '/' && path[0] != '/'
     return nil if parts[0..base.size - 1] != base && !base.empty?
-    
+
     relative_path = File.join(['/'] << parts[base.size..])
 
     Pathname.new(relative_path).relative_path_from(root).to_s
   rescue Errno::EACCES, Errno::ENOENT
     nil
+  end
+
+  def self.santize_path(path)
+    path = path[1..-2] if path.length > 1 && (path[0] == '\'' && path[-1] == '\'')
+    path = path[1..-2] if path.length > 1 && (path[0] == '"' && path[-1] == '"')
+    path
   end
 
   def self.descendent?(path, base)

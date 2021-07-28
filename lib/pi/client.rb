@@ -18,6 +18,7 @@ module PI
       @authenticated = false
       @data_connection = nil
       @binary_flag = true
+      @rnfr = ''
     end
 
     ##########################
@@ -33,13 +34,17 @@ module PI
       end
     end
 
+    verb('ALLO') do
+      message ResponseCodes::COMMAND_NOT_IMPLEMENTED_BUT_OKAY, 'ALLO is obsolete.'
+    end
+
     verb('CDUP', auth_only: true, max_args: 0) do
       verb_CWD('..')
     end
 
     verb('CWD', auth_only: true, max_args: 1, split_args: false) do |path|
       path = '/' if path.to_s.empty?
-      path = path[1..-2] if path.length > 1 && ((path[0] == '\'' && path[-1] == '\'') || (path[0] == '"' && path[-1] == '"'))
+      path = Utils.santize_path(path)
       new_pwd = RFTPS.instance.do_as(@user, @pwd) do
         path = File.realpath(path)
         path = File.split(path)[0] unless File.directory?(path)
@@ -52,6 +57,16 @@ module PI
 
       @pwd = new_pwd
       message ResponseCodes::OKAY, 'Okay.'
+    end
+
+    verb('DELE', auth_only: true, max_args: 1, split_args: false) do |arg|
+      path = Utils.santize_path(arg)
+      RFTPS.instance.do_as(@user, @pwd) do
+        File.delete(path)
+        message ResponseCodes::OKAY, 'Okay.'
+      rescue StandardError, Errno::ENOENT, Errno::EACCES
+        message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
+      end
     end
 
     verb('FEAT', max_args: 0) do
@@ -73,6 +88,21 @@ module PI
       @data_connection.send_ascii s
     end
 
+    verb('MKD', auth_only: true, max_args: 1, split_args: false) do |arg|
+      path = Utils.santize_path(arg)
+      RFTPS.instance.do_as(@user, @pwd) do
+        Dir.mkdir(path)
+        message ResponseCodes::OKAY, 'Okay.'
+      rescue StandardError, Errno::ENOENT, Errno::EACCES
+        message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
+      end
+    end
+
+    verb('MODE', auth_only: true, max_args: 1) do |arg|
+      message ResponseCodes::SUCCESS, 'Okay.' if arg.upcase == 'S'
+      message ResponseCodes::COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER, 'Invalid parameter.' unless arg.upcase == 'S'
+    end
+
     verb('NLST', auth_only: true, max_args: 1, split_args: false) do |arg|
       if @data_connection.nil?
         return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
@@ -84,6 +114,10 @@ module PI
       files = File.directory?(path) ? Dir.children(path) : File.split(files).drop(1)
       files.delete_if { |x| x[0] == '.' } if Config.server.hide_dot_files
       @data_connection.send_ascii "#{files.join("\r\n")}\r\n"
+    end
+
+    verb('NOOP', max_args: 0) do
+      message ResponseCodes::SUCCESS, "Okay."
     end
 
     verb('PASS', max_args: 1) do |pass|
@@ -127,6 +161,38 @@ module PI
       @data_connection.send_file path
     end
 
+    verb('RMD', auth_only: true, max_args: 1, split_args: false) do |arg|
+      path = Utils.santize_path(arg)
+      RFTPS.instance.do_as(@user, @pwd) do
+        Dir.rmdir(path)
+        message ResponseCodes::OKAY, 'Okay.'
+      rescue StandardError, Errno::ENOENT, Errno::EACCES
+        message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
+      end
+    end
+
+    verb('RNFR', auth_only: true, max_args: 1, split_args: false) do |arg|
+      @rnfr = Utils.santize_path(arg)
+      message ResponseCodes::REQUESTED_FILE_ACTION_PENDING, 'Waiting for RNTO...'
+    end
+
+    verb('RNTO', auth_only: true, max_args: 1, split_args: false) do |arg|
+      return message ResponseCodes::BAD_COMMAND_SEQ, 'Bad sequence of commands.' unless @verb_history.last == 'RNFR'
+
+      rnto = Utils.santize_path(arg)
+      RFTPS.instance.do_as(@user, @pwd) do
+        FileUtils.mv(@rnfr, rnto)
+        message ResponseCodes::OKAY, 'Okay.'
+      rescue StandardError, Errno::ENOENT, Errno::EACCES
+        message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
+      end
+    end
+
+    verb('STRU', auth_only: true, max_args: 1) do |arg|
+      message ResponseCodes::SUCCESS, 'Okay.' if arg.upcase == 'F'
+      message ResponseCodes::COMMAND_NOT_IMPLEMENTED_FOR_PARAMETER, 'Invalid parameter.' unless arg.upcase == 'F'
+    end
+
     verb('SYST', max_args: 0) do
       message ResponseCodes::SYSTEM_TYPE, 'UNIX Type: L8'
     end
@@ -153,7 +219,9 @@ module PI
 
     verb('XCUP', auth_only: true, max_args: 0) { verb_CDUP }
     verb('XCWD', auth_only: true, max_args: 1, split_args: false) { |path| verb_CWD(path) }
+    verb('XMKD', auth_only: true, max_args: 1, split_args: false) { |path| verb_MKD(path) }
     verb('XPWD', auth_only: true, max_args: 0) { verb_PWD }
+    verb('XRMD', auth_only: true, max_args: 1, split_args: false) { |path| verb_RMD(path) }
 
     private
 
