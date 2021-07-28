@@ -25,6 +25,7 @@ module PI
     def message(code, message, mark: ' ')
       return unless connected?
 
+      Logging.response "#{code}#{mark}#{message.chomp}"
       @socket.puts "#{code}#{mark}#{message.chomp}\r\n"
     rescue Errno::EPIPE, Errno::ECONNRESET
       close
@@ -62,7 +63,7 @@ module PI
     private
 
     def handle_packet(packet)
-      Logging.debug packet
+      Logging.command packet
 
       parts = packet.partition(' ')
       verb = parts[0].upcase

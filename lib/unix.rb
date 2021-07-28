@@ -10,7 +10,7 @@ require_relative 'rftps'
 # Enables interacting with the unix system.
 module Unix
   def self.whoami?
-    Unix.effective_user_group[0]
+    Unix.user(Etc.getpwuid)
   end
 
   def self.real_user_group
@@ -21,9 +21,14 @@ module Unix
     [Unix.user(Process::Sys.geteuid), Unix.group(Process::Sys.getegid)]
   end
 
+  def self.set_real_user_group(user = nil, group = nil)
+    Process::Sys.setgid(group.is_a?(Integer) ? group : Unix.group(group).id) unless group.nil?
+    Process::Sys.setuid(user.is_a?(Integer) ? user : Unix.user(user).id) unless user.nil?
+  end
+
   def self.set_effective_user_group(user = nil, group = nil)
-    Process::Sys.setegid(Unix.group(group).id) unless group.nil?
-    Process::Sys.seteuid(Unix.user(user).id) unless user.nil?
+    Process::Sys.setegid(group.is_a?(Integer) ? group : Unix.group(group).id) unless group.nil?
+    Process::Sys.seteuid(user.is_a?(Integer) ? user : Unix.user(user).id) unless user.nil?
   end
 
   def self.user(arg)
@@ -31,6 +36,7 @@ module Unix
     when String then User.new(Etc.getpwnam(arg))
     when Integer then User.new(Etc.getpwuid(arg))
     when User then arg
+    when Etc::Passwd then User.new(arg)
     else raise 'Expected either name or uid.'
     end
   end
@@ -40,6 +46,7 @@ module Unix
     when String then Etc.getpwnam(arg)
     when Integer then Etc.getpwuid(arg)
     when User then true
+    when Etc::Passwd then true
     else return false
     end
     true
@@ -52,6 +59,7 @@ module Unix
     when String then Group.new(Etc.getgrnam(arg))
     when Integer then Group.new(Etc.getgrgid(arg))
     when Group then arg
+    when Etc::Group then Group.new(arg)
     else raise 'Expected either a name or gid.'
     end
   end
@@ -61,6 +69,7 @@ module Unix
     when String then Etc.getgrnam(arg)
     when Integer then Etc.getgrgid(arg)
     when Group then true
+    when Etc::Group then true
     else return false
     end
     true
@@ -108,8 +117,13 @@ module Unix
     Dir.chdir('/')
   end
 
-  def self.owner(path)
-    stat = File.stat(path)
-    [user(stat.uid), group(stat.gid)]
+  def self.owner(arg)
+    stat = arg.is_a?(File::Stat) ? arg : File.stat(arg)
+    [Unix.user(stat.uid), Unix.group(stat.gid)]
+  end
+
+  def self.chroot(path)
+    Dir.chroot('.') # Escape from current chroot
+    Dir.chroot(path)
   end
 end

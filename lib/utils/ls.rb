@@ -54,7 +54,12 @@ module Utils
       @files = Dir.children(path).map { |s| "#{path}/#{s}".squeeze('/') } if File.directory?(path)
       @files.delete_if { |s| File.split(s)[1][0] == '.' } if hide_dot_files
       @files.delete_if { |s| !File.exist?(s) }
-      @entries = files.map { |s| LsFormat.new s }
+      @entries = files.map do |s|
+        LsFormat.new(s)
+      rescue StandardError
+        nil
+      end
+      @entries.delete_if(&:nil?)
     end
 
     def to_s
@@ -78,6 +83,6 @@ module Utils
   end
 
   def self.ls(path = '.', hide_dot_files: true)
-    RFTPS.instance.do_as(0) { Ls.new(path, hide_dot_files: hide_dot_files).to_s }
+    Ls.new(path, hide_dot_files: hide_dot_files).to_s
   end
 end

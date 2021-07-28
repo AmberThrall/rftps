@@ -80,6 +80,7 @@ end
 Logging.backup
 Logging.clear
 
+Dir.chdir('/')
 Unix.daemonize if daemon
 
 # Start the main loop

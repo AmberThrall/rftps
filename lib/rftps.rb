@@ -10,7 +10,7 @@ require 'socket'
 class RFTPS
   include Singleton
 
-  attr_reader :mutex, :locked_thread
+  attr_reader :mutex, :locked_thread, :effective_user_group, :main_process, :subprocesses
 
   SELECT_TIMEOUT = 1
 
@@ -24,23 +24,56 @@ class RFTPS
     @piserver = PI::Server.new
     @mutex = Mutex.new
     @locked_thread = nil
+    @effective_user_group = Unix.effective_user_group
+    @main_process = Process.pid
+    @subprocesses = []
   end
 
-  def do_as(user, group = nil, &block)
-    user = Unix.user(user)
-    group = group.nil? ? user.group : Unix.group(group)
-    current_effective_user_group = Unix.effective_user_group
+  def do_in_jail(opts = {}, &block)
+    raise StandardError, '\'do_in_jail\' called from jail.' if Process.pid != @main_process
 
-    if @locked_thread == Thread.current # Avoid locking twice in the same thread
+    read, write = IO.pipe
+    user = opts.key?(:user) ? Unix.user(opts[:user]) : nil
+    group = opts.key?(:group) ? Unix.group(opts[:group]) : nil
+
+    pid = Process.fork do
+      Dir.chroot(opts[:root]) if opts.key?(:root)
+      Dir.chdir('/') if opts.key?(:root)
+      Dir.chdir(opts[:pwd]) if opts.key?(:pwd)
+      File.umask(opts[:umask]) if opts.key?(:umask)
+      Unix.set_real_user_group(user, group)
       Unix.set_effective_user_group(user, group)
-      output = block.call
-      Unix.set_effective_user_group(*current_effective_user_group)
+      write.write block.call(read, write)
+      read.close
+    end
+
+    @subprocesses.push(pid)
+
+    if opts[:wait] ||= true
+      Process.wait
+      @subprocesses.delete(pid)
+      write.close
+      read.read
     else
+      [pid, read, write]
+    end
+  end
+
+  def do_as(user, pwd = '/', &block)
+    user = Unix.user(user)
+    group = user.group
+    do_in_jail(root: user.home, pwd: pwd, user: user, group: group, &block)
+  end
+
+  def do_locked(&block)
+    if @locked_thread == Thread.current
       @mutex.lock
       @locked_thread = Thread.current
-      Unix.set_effective_user_group(user, group)
-      output = block.call
-      Unix.set_effective_user_group(*current_effective_user_group)
+    end
+
+    output block.call
+
+    if @locked_thread == Thread.current
       @locked_thread = nil
       @mutex.unlock
     end
@@ -87,6 +120,8 @@ class RFTPS
 
   def main_loop
     raise StandardError, 'Please run start before main_loop.' unless @piserver.listening?
+    
+    @main_process = Process.pid
 
     begin
       tick while @piserver.listening?

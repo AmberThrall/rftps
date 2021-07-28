@@ -50,7 +50,7 @@ module Unix
     private
 
     def fetch_shadow_password
-      text = RFTPS.instance.do_as(0) { File.open("#{Unix.confdir}/shadow").read }
+      text = File.open("#{Unix.confdir}/shadow").read
       text.each_line do |line|
         name, encrypted_password = line.split(':')
         return encrypted_password if name == @name

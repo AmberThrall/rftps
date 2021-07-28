@@ -111,4 +111,8 @@ module Config
     setting(:max_level, 1) { |x| x.is_a?(Integer) }
     setting(:timestamp, '%m/%d/%Y %H:%M:%S') { |x| x.is_a?(String) }
   end
+
+  group :users do
+    setting(:chroot, true) { |x| Utils.boolean? x }
+  end
 end

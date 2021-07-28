@@ -7,7 +7,7 @@ require_relative 'rftps'
 module Logging
   # Handles the actual writing of text to logs
   class Writer
-    CATEGORY_WIDTH = 9
+    CATEGORY_WIDTH = 10
 
     def clear(file)
       filename = file == :logfile ? Config.logging.file : file
@@ -39,17 +39,19 @@ module Logging
       f = File.open(file, 'a')
       f.puts(string)
       f.close
-    rescue Errno::EACCES
-      RFTPS.instance.do_as(0) { append_to_file(file, string) }
+    rescue StandardError
+      # skip
     end
   end
 
   LEVELS = {
-    fatal:   { category: 'FATAL',   methods: %i[stderr logfile] },
-    error:   { category: 'ERROR',   methods: %i[stderr logfile] },
-    warning: { category: 'WARNING', methods: %i[stderr logfile] },
-    info:    { category: 'INFO',    methods: %i[stdout logfile] },
-    debug:   { category: 'DEBUG',   methods: %i[stdout logfile] }
+    fatal:      { category: 'FATAL',    methods: %i[stderr logfile] },
+    error:      { category: 'ERROR',    methods: %i[stderr logfile] },
+    warning:    { category: 'WARNING',  methods: %i[stderr logfile] },
+    info:       { category: 'INFO',     methods: %i[stdout logfile] },
+    command:    { category: 'COMMAND',  methods: %i[stdout logfile] },
+    response:   { category: 'RESPONSE', methods: %i[stdout logfile] },
+    debug:      { category: 'DEBUG',    methods: %i[stdout logfile] }
   }.freeze
 
   def self.clear(file = :logfile)
@@ -75,7 +77,7 @@ module Logging
       new_path = "#{old_path}.#{n}"
     end
 
-    RFTPS.instance.do_as(0) { FileUtils.cp old_path, new_path } if n < Config.logging.num_backups
+    FileUtils.cp old_path, new_path if n < Config.logging.num_backups
   end
 
   LEVELS.each_with_index do |(key, default_opts), index|

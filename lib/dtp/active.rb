@@ -29,6 +29,16 @@ module DTP
       sent = @socket.send packet, 0
       @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.' if sent.zero?
       sent
+    rescue WaitReadable
+      ret = IO.select([@socket], nil, nil, Config.data_connections.connection_timeout)
+      if ret.nil?
+        @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.'
+        return -1
+      end
+      retry
+    rescue StandardError
+      @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.'
+      -1
     end
 
     def close_impl

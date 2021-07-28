@@ -6,12 +6,13 @@ require_relative '../unix'
 module PI
   # Handles the FTP communication with a client
   class Client < BaseClient
-    attr_reader :user, :authenticated, :pwd
+    attr_reader :user, :authenticated, :pwd, :root
 
     def initialize(socket, addrinfo)
       super socket, addrinfo
 
-      @pwd = Pathname.new('/')
+      @pwd = '/'
+      @root = '/'
       @user = nil
       @password = ''
       @authenticated = false
@@ -37,20 +38,25 @@ module PI
     end
 
     verb('CWD', auth_only: true, max_args: 1, split_args: false) do |path|
-      pn = Pathname.new Utils.local_path_to_global(path, @pwd)
-      if pn.exist?
-        pn = pn.realpath
-        pn = pn.split[0] unless pn.directory?
-        @pwd = pn.to_s
-        message ResponseCodes::OKAY, 'Okay.'
-      else
-        message ResponseCodes::OKAY, "#{path}: No such file or directory."
+      path = '/' if path.to_s.empty?
+      path = path[1..-2] if path.length > 1 && ((path[0] == '\'' && path[-1] == '\'') || (path[0] == '"' && path[-1] == '"'))
+      new_pwd = RFTPS.instance.do_as(@user, @pwd) do
+        path = File.realpath(path)
+        path = File.split(path)[0] unless File.directory?(path)
+        File.join('/', path)
+      rescue Errno::ENOENT, Errno::EACCES
+        nil
       end
+
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{path}: No such file or directory." if new_pwd.empty?
+
+      @pwd = new_pwd
+      message ResponseCodes::OKAY, 'Okay.'
     end
 
     verb('FEAT', max_args: 0) do
-      msg = 'Commands supported:'
-      msg += self.class.verbs.keys.join("\r\n ")
+      msg = "Requests supported:\r\n"
+      msg += self.class.verbs.keys.join("\r\n")
       message ResponseCodes::SYSTEM_STATUS, msg, mark: '-'
       message ResponseCodes::SYSTEM_STATUS, 'END'
     end
@@ -60,8 +66,11 @@ module PI
         return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
       end
 
-      path = Utils.local_path_to_global(arg, @pwd)
-      @data_connection.send_ascii Utils.ls(path, hide_dot_files: Config.server.hide_dot_files)
+      path = convert_path(arg)
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{arg}: No such file or directory." if path.nil?
+
+      s = Utils.ls(path, hide_dot_files: Config.server.hide_dot_files)
+      @data_connection.send_ascii s
     end
 
     verb('NLST', auth_only: true, max_args: 1, split_args: false) do |arg|
@@ -69,11 +78,12 @@ module PI
         return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
       end
 
-      path = Utils.local_path_to_global(arg.to_s, @pwd)
-      nlst = "#{arg}: No such file or directory."
-      nlst = File.split(path)[1] if File.file?(path)
-      nlst = Dir.children(path).join("\r\n") if File.directory?(path)
-      @data_connection.send_ascii "#{nlst}\r\n"
+      path = convert_path(arg)
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{arg}: No such file or directory." if path.nil?
+
+      files = File.directory?(path) ? Dir.children(path) : File.split(files).drop(1)
+      files.delete_if { |x| x[0] == '.' } if Config.server.hide_dot_files
+      @data_connection.send_ascii "#{files.join("\r\n")}\r\n"
     end
 
     verb('PASS', max_args: 1) do |pass|
@@ -95,13 +105,26 @@ module PI
     end
 
     verb('PWD', auth_only: true, max_args: 0) do
-      local_path = @pwd
-      message ResponseCodes::PATHNAME_CREATED, "\"#{local_path}\""
+      message ResponseCodes::PATHNAME_CREATED, "\"#{@pwd}\""
     end
 
     verb('QUIT', max_args: 0) do
       message ResponseCodes::CLOSING_CONNECTION, 'Goodbye.'
       close
+      deauthenticate
+    end
+
+    verb('RETR', auth_only: true, min_args: 1, max_args: 1, split_args: false) do |arg|
+      if @data_connection.nil?
+        return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
+      end
+
+      path = convert_path(arg)
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{arg}: No such file or directory." if path.nil?
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{arg} is a directory." unless File.file?(path)
+
+      message ResponseCodes::FILE_STATUS_OKAY_OPENING_DATA_CONNECTION, 'Sending file'
+      @data_connection.send_file path
     end
 
     verb('SYST', max_args: 0) do
@@ -134,6 +157,19 @@ module PI
 
     private
 
+    def convert_path(path)
+      path ||= '.'
+      path = path[1..-2] if path.length > 1 && ((path[0] == '\'' && path[-1] == '\'') || (path[0] == '"' && path[-1] == '"'))
+      new_path = RFTPS.instance.do_as(@user, @pwd) do
+        File.realpath(path)
+      rescue Errno::ENOENT, Errno::EACCES
+        nil
+      end
+      return nil if new_path.empty?
+
+      File.join(@root, new_path)
+    end
+
     def try_login
       if Utils.valid_login?(@user, @password)
         on_logged_in
@@ -147,6 +183,8 @@ module PI
       @authenticated = false
       @user = nil
       @password = ''
+      @pwd = '/'
+      @root = '/'
     end
 
     def on_logged_in
@@ -157,7 +195,8 @@ module PI
         message ResponseCodes::LOGGED_IN, "Logged into #{@user}."
       end
       @authenticated = true
-      @pwd = @user.home
+      @pwd = Config.users.chroot ? '/' : @user.home
+      @root = Config.users.chroot ? @user.home : '/'
     end
   end
 end
