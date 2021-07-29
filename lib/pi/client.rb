@@ -92,6 +92,13 @@ module PI
       message ResponseCodes::SYSTEM_STATUS, 'END'
     end
 
+    verb('HELP', max_args: 1) do |verb|
+      return verb_FEAT if verb.nil?
+      return message ResponseCodes::COMMAND_NOT_IMPLEMENTED, "Unknown command #{verb.upcase}." unless self.class.verbs.key?(verb.upcase)
+
+      message ResponseCodes::HELP_MESSAGE, self.class.verbs[verb.upcase].help
+    end
+
     verb('LIST', auth_only: true, max_args: 1, split_args: false) do |arg|
       if @data_connection.nil?
         return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
@@ -204,6 +211,18 @@ module PI
       rescue StandardError, Errno::ENOENT, Errno::EACCES
         message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
       end
+    end
+
+    verb('STAT', max_args: 0) do
+      s = "FTP server status:\r\n"
+      s += "Version #{RFTPS.version}\r\n"
+      s += "Connected to #{Config.server.external_ip}"
+      s += "Logged into #{@user}" if @authenticated
+      s += "Not logged in" unless @authenticated
+      s += "TYPE: #{@binary_flag ? 'BINARY' : 'ASCII'},"
+      s += ' FORM: Nonprint; STRUcture: File; transfer MODE: Stream'
+      message ResponseCodes::SYSTEM_STATUS, s, mark: '-'
+      message ResponseCodes::SYSTEM_STATUS, 'End of status'
     end
 
     verb('STOR', auth_only: true, min_args: 1, max_args: 1, split_args: false) do |arg|

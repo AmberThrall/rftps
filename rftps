@@ -76,6 +76,11 @@ if logfile.directory?
   Logging.warning "Logfile is set to a directory; changing to #{Config.logging.file}."
 end
 
+# Ensure server.external_ip is an ip address
+unless Utils.ip_address?(Config.server.external_ip)
+  Config.server.external_ip = Utils.what_is_my_ip?
+end
+
 # Backup logfile if it exists
 Logging.backup
 Logging.clear

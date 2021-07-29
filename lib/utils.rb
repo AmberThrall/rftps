@@ -5,6 +5,8 @@ require_relative 'utils/valid_login'
 require_relative 'utils/paths'
 require_relative 'utils/ls'
 require_relative 'unix'
+require 'net/http'
+require 'resolv'
 
 # Various utility methods
 module Utils
@@ -24,5 +26,13 @@ module Utils
     s = s.gsub('$total', total.to_s)
     s = s.gsub('$bar', +'[' << ('#' * nhash).ljust(width) << ']')
     s.gsub('$percent', (ratio * 100).to_i.to_s.rjust(3))
+  end
+
+  def self.what_is_my_ip?
+    Net::HTTP.get URI "https://api.ipify.org"
+  end
+
+  def self.ip_address?(str)
+    str =~ Resolv::IPv4::Regex ? true : false
   end
 end

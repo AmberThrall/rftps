@@ -3,7 +3,7 @@
 module PI
   # Class for VERB information and parsing
   class Verb
-    attr_reader :name, :auth_only, :min_args, :max_args, :arg_sep, :split_args
+    attr_reader :name, :auth_only, :min_args, :max_args, :arg_sep, :split_args, :help
 
     def initialize(name, method, opts = {})
       @name = name
@@ -13,6 +13,7 @@ module PI
       @arg_sep = opts.key?(:arg_sep) ? opts[:arg_sep].to_s : ' '
       @split_args = opts.key?(:split_args) ? opts[:split_args] : true
       @method = method
+      @help = opts.key?(:help) ? opts[:help] : generate_help
     end
 
     def handle(client, args)
@@ -51,6 +52,18 @@ module PI
           end
 
       client.message ResponseCodes::PARAMETER_SYNTAX_ERROR, s
+    end
+
+    def generate_help
+      s = "Syntax: #{@name}"
+      @min_args.times { |i| s += " arg#{i+1}"}
+      if @max_args < 0
+        s += " [optional arguments...]"
+      else
+        (@max_args - @min_args).times { |i| s += " [arg#{@min_args + i}]"}
+      end
+
+      s
     end
   end
 end
