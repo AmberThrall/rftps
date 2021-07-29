@@ -38,6 +38,22 @@ module PI
       message ResponseCodes::COMMAND_NOT_IMPLEMENTED_BUT_OKAY, 'ALLO is obsolete.'
     end
 
+    verb('APPE', auth_only: true, min_args: 1, max_args: 1, split_args: false) do |arg|
+      if @data_connection.nil?
+        return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
+      end
+
+      dir, filename = File.split(arg)
+      dir = convert_path(dir)
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{arg}: Directory does not exist." if dir.nil? || !File.directory?(dir)
+
+      path = File.join(dir, filename)
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{arg} is a directory." if File.directory?(path)
+
+      message ResponseCodes::FILE_STATUS_OKAY_OPENING_DATA_CONNECTION, 'Waiting for file'
+      @data_connection.recv_file(path, true)
+    end
+
     verb('CDUP', auth_only: true, max_args: 0) do
       verb_CWD('..')
     end
@@ -92,8 +108,10 @@ module PI
       path = Utils.santize_path(arg)
       RFTPS.instance.do_as(@user, @pwd) do
         Dir.mkdir(path)
-        message ResponseCodes::OKAY, 'Okay.'
-      rescue StandardError, Errno::ENOENT, Errno::EACCES
+        message ResponseCodes::PATHNAME_CREATED, "\"#{File.realpath(path)}\""
+      rescue Errno::EACCES
+        message ResponseCodes::FILE_UNAVAILABLE, 'Access denied.'
+      rescue StandardError, Errno::ENOENT
         message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
       end
     end
@@ -186,6 +204,43 @@ module PI
       rescue StandardError, Errno::ENOENT, Errno::EACCES
         message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
       end
+    end
+
+    verb('STOR', auth_only: true, min_args: 1, max_args: 1, split_args: false) do |arg|
+      if @data_connection.nil?
+        return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
+      end
+
+      dir, filename = File.split(arg)
+      dir = convert_path(dir)
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{arg}: Directory does not exist." if dir.nil? || !File.directory?(dir)
+
+      path = File.join(dir, filename)
+      return message ResponseCodes::FILE_UNAVAILABLE, "#{arg} is a directory." if File.directory?(path)
+
+      message ResponseCodes::FILE_STATUS_OKAY_OPENING_DATA_CONNECTION, 'Waiting for file'
+      @data_connection.recv_file(path, false)
+    end
+
+    verb('STOU', auth_only: true, max_args: 1, split_args: false) do |arg|
+      if @data_connection.nil?
+        return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
+      end
+
+      arg ||= 'file'
+      dir, filename = File.split(arg)
+      dir = convert_path(dir)
+      dir = convert_path('.') if dir.nil? || !File.directory?(dir)
+
+      path = File.join(dir, filename)
+      n = 1
+      while File.exist?(path)
+        path = File.join(dir, "#{filename}.#{n}")
+        n += 1
+      end
+
+      message ResponseCodes::FILE_STATUS_OKAY_OPENING_DATA_CONNECTION, "\"#{Utils.global_path_to_local(path, @root)}\""
+      @data_connection.recv_file(path, false)
     end
 
     verb('STRU', auth_only: true, max_args: 1) do |arg|

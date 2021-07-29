@@ -10,9 +10,7 @@ module Utils
     return nil if root == '/' && path[0] != '/'
     return nil if parts[0..base.size - 1] != base && !base.empty?
 
-    relative_path = File.join(['/'] << parts[base.size..])
-
-    Pathname.new(relative_path).relative_path_from(root).to_s
+    File.join(['/'] << parts[base.size..])
   rescue Errno::EACCES, Errno::ENOENT
     nil
   end

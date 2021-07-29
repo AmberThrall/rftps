@@ -29,13 +29,19 @@ module DTP
       sent = @socket.send packet, 0
       @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.' if sent.zero?
       sent
-    rescue WaitReadable
-      ret = IO.select([@socket], nil, nil, Config.data_connections.connection_timeout)
-      if ret.nil?
-        @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.'
+    rescue StandardError
+      @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.'
+      -1
+    end
+
+    def recv_impl
+      connect unless connected?
+      unless connected?
+        @client.message PI::ResponseCodes::CANT_OPEN_CONNECTION, "Couldn't connect to #{@ip}:#{@port}."
         return -1
       end
-      retry
+
+      @socket.recv(Config.data_connections.chunk_size)
     rescue StandardError
       @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.'
       -1
@@ -55,7 +61,7 @@ module DTP
                 end
     rescue Errno::ETIMEDOUT
       @socket = nil
-      Logging.info "Failed to connect to #{@ip}:#{@port}" unless connected?
+      Logging.info "Data connection failed to connect to #{@ip}:#{@port}" unless connected?
     end
   end
 end

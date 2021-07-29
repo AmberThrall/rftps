@@ -91,9 +91,54 @@ module DTP
       end
     end
 
+    def recv_file(file, append = false)
+      Logging.debug("recv_file -> #{file}")
+
+      # Ensure we have write permission
+      can_access = RFTPS.instance.do_as(@client.user, @client.pwd) do
+        FileUtils.touch(Utils.global_path_to_local(file, @client.root))
+        true
+      rescue Errno::EACCES
+        @client.message PI::ResponseCodes::FILE_UNAVAILABLE, 'Access denied.'
+        false
+      end
+
+      return unless can_access == 'true'
+
+      @thread = RFTPS.instance.new_thread do
+        good_status = true
+        f = File.open(file, append ? 'ab' : 'wb')
+        loop do
+          data = recv_impl
+          if data.is_a?(Integer) && data < 0
+            good_status = false
+            break
+          end
+
+          break if data == 0 || data.empty?
+
+          begin
+            f.write(data)
+          rescue StandardError => e
+            Logging.error "Writing error occured: #{e.message}"
+            @client.message PI::ResponseCodes::FILE_ACTION_ABORTED, 'Error occured while writing.'
+            good_status = false
+            break
+          end
+        end
+        f.close
+        close_impl
+        @client.message PI::ResponseCodes::FILE_ACTION_SUCCESSFUL, 'Success.' if good_status
+      end
+    end
+
     protected
 
     def send_impl(_packet)
+      raise 'Not implemented'
+    end
+
+    def recv_impl
       raise 'Not implemented'
     end
 
