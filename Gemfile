@@ -1,5 +1,6 @@
 source 'https://rubygems.org'
 gem 'rake'
+gem 'sys-filesystem'
 gem 'tomlrb'
 gem 'unix-crypt'
 

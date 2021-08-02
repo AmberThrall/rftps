@@ -2,6 +2,7 @@
 
 require_relative 'base_client'
 require_relative '../unix'
+require 'sys/filesystem'
 
 module PI
   # Handles the FTP communication with a client
@@ -25,8 +26,8 @@ module PI
     ##########################
     ## Verb Implementations ##
     ##########################
-    # Missing verbs: ABOR, ADAT, AVBL, CCC, CONF, CSID, DSIZ, ENC, EPRT, EPRT, EPSV, HOST, LANG, LPRT
-    #                LPSV, MDTM, MFCT, MFF, MFMT, MIC, MLSD, MLST, OPTS, PBSZ, PROT, REIN, RMDA, SITE
+    # Missing verbs: ABOR, ADAT, CCC, CONF, CSID, ENC, EPRT, EPRT, EPSV, HOST, LANG, LPRT
+    #                LPSV, MDTM, MFCT, MFF, MFMT, MIC, MLSD, MLST, OPTS, PBSZ, PROT, REIN, SITE
     #                SIZE, SMNT, SPSV, THMB, XRCP, XRSQ, XSEM, XSEN
 
     verb('ACCT', min_args: 1, max_args: 1) do |user|
@@ -41,6 +42,15 @@ module PI
 
     verb('ALLO') do
       message ResponseCodes::COMMAND_NOT_IMPLEMENTED_BUT_OKAY, 'ALLO is obsolete.'
+    end
+
+    verb('AVBL', max_args: 1, split_args: false) do |arg|
+      path = convert_path(arg)
+      mountpoint = Sys::Filesystem.mount_point(path)
+      stat = Sys::Filesystem.stat(mountpoint)
+      message ResponseCodes::FILE_STATUS, stat.blocks_free.to_s
+    rescue StandardError
+      message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
     end
 
     verb('APPE', auth_only: true, min_args: 1, max_args: 1, split_args: false) do |arg|
@@ -87,6 +97,19 @@ module PI
         File.delete(path)
         message ResponseCodes::OKAY, 'Okay.'
       rescue StandardError, Errno::ENOENT, Errno::EACCES
+        message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
+      end
+    end
+
+    verb('DSIZ', auth_only: true, max_args: 1, split_args: false) do |arg|
+      path = Utils.santize_path(arg)
+      RFTPS.instance.do_as(@user, @pwd) do
+        return message ResponseCodes::FILE_UNAVAILABLE, "#{arg}: Is not a directory." unless File.directory?(path)
+
+        size = Dir["#{path}/**/*"].select { |f| File.file?(f) }.sum { |f| File.size(f) }
+        message ResponseCodes::FILE_STATUS, size.to_s
+      rescue StandardError
+        Logging.debug e.message
         message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
       end
     end
@@ -219,6 +242,16 @@ module PI
       path = Utils.santize_path(arg)
       RFTPS.instance.do_as(@user, @pwd) do
         Dir.rmdir(path)
+        message ResponseCodes::OKAY, 'Okay.'
+      rescue StandardError, Errno::ENOENT, Errno::EACCES
+        message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
+      end
+    end
+
+    verb('RMDA', auth_only: true, max_args: 1, split_args: false) do |arg|
+      path = Utils.santize_path(arg)
+      RFTPS.instance.do_as(@user, @pwd) do
+        FileUtils.remove_dir(path)
         message ResponseCodes::OKAY, 'Okay.'
       rescue StandardError, Errno::ENOENT, Errno::EACCES
         message ResponseCodes::FILE_UNAVAILABLE, 'Failed.'
