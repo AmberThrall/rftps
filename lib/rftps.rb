@@ -15,7 +15,7 @@ class RFTPS
   SELECT_TIMEOUT = 1
 
   def self.version
-    '0.3'
+    '0.8'
   end
 
   def initialize
@@ -50,7 +50,7 @@ class RFTPS
     @subprocesses.push(pid)
 
     if opts[:wait] ||= true
-      Process.wait
+      Process.wait(pid)
       @subprocesses.delete(pid)
       write.close
       read.read

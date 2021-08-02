@@ -19,11 +19,16 @@ module PI
       @data_connection = nil
       @binary_flag = true
       @rnfr = ''
+      @start_position = 0
     end
 
     ##########################
     ## Verb Implementations ##
     ##########################
+    # Missing verbs: ABOR, ADAT, AVBL, CCC, CONF, CSID, DSIZ, ENC, EPRT, EPRT, EPSV, HOST, LANG, LPRT
+    #                LPSV, MDTM, MFCT, MFF, MFMT, MIC, MLSD, MLST, OPTS, PBSZ, PROT, REIN, RMDA, SITE
+    #                SIZE, SMNT, SPSV, THMB, XRCP, XRSQ, XSEM, XSEN
+
     verb('ACCT', min_args: 1, max_args: 1) do |user|
       if @verb_history.last == 'PASS'
         @user = Unix.user(user) if Unix.user?(user)
@@ -52,6 +57,7 @@ module PI
 
       message ResponseCodes::FILE_STATUS_OKAY_OPENING_DATA_CONNECTION, 'Waiting for file'
       @data_connection.recv_file(path, true)
+      @start_position = 0
     end
 
     verb('CDUP', auth_only: true, max_args: 0) do
@@ -190,6 +196,11 @@ module PI
       deauthenticate
     end
 
+    verb('REST', auth_only: true, max_args: 1) do |arg|
+      @start_position = arg.to_s
+      message ResponseCodes::REQUESTED_FILE_ACTION_PENDING, "Start position set to #{@start_position}."
+    end
+
     verb('RETR', auth_only: true, min_args: 1, max_args: 1, split_args: false) do |arg|
       if @data_connection.nil?
         return message ResponseCodes::CANT_OPEN_CONNECTION, 'Please establish a connection with PASV or PORT first.'
@@ -200,7 +211,8 @@ module PI
       return message ResponseCodes::FILE_UNAVAILABLE, "#{arg} is a directory." unless File.file?(path)
 
       message ResponseCodes::FILE_STATUS_OKAY_OPENING_DATA_CONNECTION, 'Sending file'
-      @data_connection.send_file path
+      @data_connection.send_file path, @start_position
+      @start_position = 0
     end
 
     verb('RMD', auth_only: true, max_args: 1, split_args: false) do |arg|
@@ -233,11 +245,13 @@ module PI
     verb('STAT', max_args: 0) do
       s = "FTP server status:\r\n"
       s += "Version #{RFTPS.version}\r\n"
-      s += "Connected to #{Config.server.external_ip}"
-      s += "Logged into #{@user}" if @authenticated
-      s += "Not logged in" unless @authenticated
+      s += "Connected to #{Config.server.external_ip}\r\n"
+      s += "Logged into #{@user}\r\n" if @authenticated
+      s += "Not logged in\r\n" unless @authenticated
       s += "TYPE: #{@binary_flag ? 'BINARY' : 'ASCII'},"
-      s += ' FORM: Nonprint; STRUcture: File; transfer MODE: Stream'
+      s += " FORM: Nonprint; STRUcture: File; transfer MODE: Stream\r\n"
+      s += 'No data connection' if @data_connection.nil?
+      s += @data_connection.status unless @data_connection.nil?
       message ResponseCodes::SYSTEM_STATUS, s, mark: '-'
       message ResponseCodes::SYSTEM_STATUS, 'End of status'
     end
@@ -256,6 +270,7 @@ module PI
 
       message ResponseCodes::FILE_STATUS_OKAY_OPENING_DATA_CONNECTION, 'Waiting for file'
       @data_connection.recv_file(path, false)
+      @start_position = 0
     end
 
     verb('STOU', auth_only: true, max_args: 1, split_args: false) do |arg|
@@ -277,6 +292,7 @@ module PI
 
       message ResponseCodes::FILE_STATUS_OKAY_OPENING_DATA_CONNECTION, "\"#{Utils.global_path_to_local(path, @root)}\""
       @data_connection.recv_file(path, false)
+      @start_position = 0
     end
 
     verb('STRU', auth_only: true, max_args: 1) do |arg|

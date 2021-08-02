@@ -29,10 +29,31 @@ module Utils
   end
 
   def self.what_is_my_ip?
-    Net::HTTP.get URI "https://api.ipify.org"
+    Net::HTTP.get URI 'https://api.ipify.org'
   end
 
   def self.ip_address?(str)
     str =~ Resolv::IPv4::Regex ? true : false
+  end
+
+  def self.format_bytes(bytes, ndigits: 2, base: 1_024, units: nil)
+    units = %w[B kB MB GB TB PB EB ZB YB] if base == 1_000 && units.nil?
+    units = %w[B KiB MiB GiB TiB PiB EiB ZiB YiB] if base == 1_024 && units.nil?
+    units ||= ['B']
+    unit = units[0]
+
+    units[1..].each do |m|
+      break if bytes < base
+
+      unit = m
+      bytes /= base.to_f
+    end
+
+    return "#{bytes.to_i} #{unit}" if ndigits <= 0 || unit == units[0]
+
+    parts = bytes.to_s.partition('.')
+    digits = parts[2][..(ndigits - 1)]
+    digits += '0' * (ndigits - digits.length) if digits.length < ndigits
+    "#{parts[0]}.#{digits} #{unit}"
   end
 end
