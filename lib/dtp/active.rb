@@ -26,9 +26,7 @@ module DTP
         return -1
       end
 
-      sent = @socket.send packet, 0
-      @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.' if sent.zero?
-      sent
+      @socket.send packet, 0
     rescue StandardError
       @client.message PI::ResponseCodes::CONNECTION_CLOSED, 'Data connection was broken.'
       -1

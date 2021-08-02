@@ -29,7 +29,7 @@ module DTP
       close
     end
 
-    def send(packet)
+    def send_packet(packet)
       return if packet.empty?
 
       size = packet.length
@@ -37,7 +37,7 @@ module DTP
       @thread = RFTPS.instance.new_thread do
         until packet.empty?
           sent = send_impl(packet)
-          break if sent <= 0
+          break if sent.negative?
 
           packet = packet[sent..]
           debug_progress_bar(size - packet.length, size)
@@ -49,7 +49,7 @@ module DTP
 
     def send_ascii(packet)
       packet = "#{packet}\r\n" unless packet[-1] == "\n"
-      send packet.gsub(/(?<=[^\r])\n/, "\r\n") # Replace \n with \r\n
+      send_packet packet.gsub(/(?<=[^\r])\n/, "\r\n") # Replace \n with \r\n
     end
 
     def send_file(file, start_position = 0)

@@ -78,7 +78,9 @@ end
 
 # Ensure server.external_ip is an ip address
 unless Utils.ip_address?(Config.server.external_ip)
+  Logging.info 'Fetching external ip address...'
   Config.server.external_ip = Utils.what_is_my_ip?
+  Logging.info "Received #{Config.server.external_ip}"
 end
 
 # Backup logfile if it exists

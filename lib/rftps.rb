@@ -120,7 +120,7 @@ class RFTPS
 
   def main_loop
     raise StandardError, 'Please run start before main_loop.' unless @piserver.listening?
-    
+
     @main_process = Process.pid
 
     begin
@@ -161,7 +161,11 @@ class RFTPS
   end
 
   def wait_on_sockets
-    readables, = IO.select(@sockets.keys, [], [], SELECT_TIMEOUT)
+    begin
+      readables, = IO.select(@sockets.keys, [], [], SELECT_TIMEOUT)
+    rescue IOError
+      return
+    end
     return if readables.nil?
 
     readables.each do |sock|

@@ -155,6 +155,23 @@ module PI
       end
     end
 
+    verb('PASV', auth_only: true, max_args: 0) do
+      @data_connection&.close
+      @data_connection = DTP::Passive.new(self)
+      port = @data_connection.listen(Config.data_connections.passive.port_range.min, Config.data_connections.passive.port_range.max, host: Config.server.host, attempts: 1)
+
+      if port.nil?
+        @data_connection = nil
+        Logging.error 'Couldn\'t open passive data connection, all ports in use.'
+        return message ResponseCodes::CANT_OPEN_CONNECTION, 'Couldn\'t open passive data connection, all ports in use. Feel free to try again.'
+      end
+
+      Logging.info "Opened passive data connection on port #{port}."
+      p2 = port % 256
+      p1 = port / 256
+      message ResponseCodes::ENTERING_PASV_MODE, "#{Config.server.external_ip.gsub('.', ',')},#{p1},#{p2}"
+    end
+
     verb('PORT', auth_only: true, min_args: 6, max_args: 6, arg_sep: ',') do |*h, p1, p2|
       ip = h.join('.')
       port = p1.to_i * 256 + p2.to_i
