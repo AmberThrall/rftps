@@ -324,11 +324,11 @@ module PI
       end
     end
 
-    verb('XCUP', auth_only: true, max_args: 0) { verb_CDUP }
-    verb('XCWD', auth_only: true, max_args: 1, split_args: false) { |path| verb_CWD(path) }
-    verb('XMKD', auth_only: true, max_args: 1, split_args: false) { |path| verb_MKD(path) }
-    verb('XPWD', auth_only: true, max_args: 0) { verb_PWD }
-    verb('XRMD', auth_only: true, max_args: 1, split_args: false) { |path| verb_RMD(path) }
+    verb_synonym('XCUP', 'CDUP')
+    verb_synonym('XCWD', 'CWD')
+    verb_synonym('XMKD', 'MKD')
+    verb_synonym('XPWD', 'PWD')
+    verb_synonym('XRMD', 'RMD')
 
     private
 
